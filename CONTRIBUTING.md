@@ -36,12 +36,43 @@ uv tool install --editable .
 dreamteam
 ```
 
+## Where to start
+
+- **Pick an issue.** [`good first issue`](https://github.com/VictorAboba/DreamTeam/labels/good%20first%20issue)
+  issues are small and self-contained, each with the files involved and what "done" means;
+  [`help wanted`](https://github.com/VictorAboba/DreamTeam/labels/help%20wanted) ones are bigger. Say in the issue
+  that you're taking it, so two people don't do the same work. Questions in the issue are welcome.
+- **Run only the tests you need.** The whole suite takes 8–16 minutes; while you work, run the files for the
+  module you change, e.g. `uv run pytest -q tests/test_board.py`, or one test with `-k name`. Run everything
+  once before you open the pull request (or let CI do it).
+- **Web board tests** (`tests/test_ui.py`) execute the JavaScript in Node.js and skip themselves without `node`
+  on PATH. If you change `src/dreamteam/static/`, install Node.js so they run.
+- **Try it by hand.** `dreamteam serve --no-browser` starts the board on `http://127.0.0.1:8765`; a real session
+  needs a model, and a local one through Ollama costs nothing.
+
+### Map of the code
+
+| Area | Files | Tests |
+|---|---|---|
+| Command line | `cli.py`, `console.py` | `test_cli*.py` |
+| Terminal UI | `tui/` (`app.py`, `render.py`, `commands.py`, `i18n.py` with all its texts) | `test_tui_*.py` |
+| Web board and REST | `web.py`, `launcher.py`, `static/` (`app.js` board, `home.js` sessions page, `traces.js`) | `test_ui.py`, `test_surfaces.py`, `test_launcher.py` |
+| Task board, messages, triggers | `board.py`, `mailbox.py`, `triggers.py` | `test_board.py`, `test_mailbox.py`, `test_triggers.py` |
+| Files, git, shell, jobs | `workspace.py`, `shell.py`, `jobs.py`, `procs.py`, `netoff.py` | `test_workspace.py`, `test_shell.py`, `test_jobs.py`, `test_procs.py`, `test_netoff.py` |
+| Skills | `skills.py`, `swarm_skills.py`, `skill_deps.py`, `tools/skill_tools.py` | `test_skills.py`, `test_swarm_skills.py`, `test_skill_deps.py`, `test_skill_envs.py` |
+| MCP | `mcp_forge.py` (servers agents write), `hub_mcp.py`, `launcher_mcp.py` (the swarm as an MCP server) | `test_mcp_forge.py`, `test_hub_clients.py` |
+| Agents | `agent.py` (the agent loop), `prompts.py` (texts in ru/en), `roles.py`, `tools/` (agents' tools) | `test_runtime.py`, `test_prompts.py`, `test_roles.py`, `test_tools.py` |
+| Models | `llm/` (`anthropic_llm.py`, `openai_llm.py`, `scripted.py` for tests) | `test_llm.py` |
+| Settings | `config.py` (defaults), `settings.py` (the Settings page) | `test_launcher.py` |
+
+`docs/SPEC.md` describes every module's contract: read the section of the module you change first.
+
 ## Pull requests
 
 1. Open an issue first for anything bigger than a small fix, so we can agree on the approach.
 2. Keep a pull request to one change, with tests for new behaviour and fixed bugs.
-3. Run `uv run pytest -q` and `uvx ruff check --select E9,F63,F7,F82 src tests` before pushing; CI runs both
-   on Linux, Windows and macOS.
+3. Run `uv run pytest -q` and `uvx ruff check src tests` before pushing; CI runs both on Linux, Windows and
+   macOS.
 4. Update the docs when behaviour visible to users changes: the guide pages in [docs/en](docs/en/README.md) and
    [docs/ru](docs/ru/README.md) (the same files in both languages — change both, or say in the PR which one needs
    a translation), the README if the short overview changes ([README.md](README.md) and [README.ru.md](README.ru.md)
