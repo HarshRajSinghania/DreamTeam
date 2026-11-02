@@ -19,8 +19,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      # syntax errors and undefined names only; style is not enforced
-      - run: uvx ruff check --select E9,F63,F7,F82 src tests
+      # the rules selected in pyproject.toml ([tool.ruff.lint])
+      - run: uvx ruff check src tests
 
   test:
     name: test (${{ matrix.os }}, py${{ matrix.python }})
