@@ -17,6 +17,16 @@ import urllib.request
 from datetime import datetime
 from typing import Any, Iterable
 
+
+def _parse_number(value: str) -> float | None:
+    """Parse a user-typed number ("5", "$2.50", "2,5"); None if invalid. Mirrors tui.input.number."""
+    text = value.strip().replace("$", "").replace(",", ".")
+    try:
+        result = float(text)
+    except ValueError:
+        return None
+    return result if result == result and abs(result) != float("inf") else None
+
 HELP = {
     "ru": """Команды:
   @Имя Фамилия текст      — написать агенту (или /msg Имя Фамилия: текст)
@@ -508,19 +518,27 @@ class Console:
             return hub.act("swarm_status")
         if cmd == "/jobs":
             return self._jobs(arg)
-        if cmd == "/show" and arg:
+        if cmd == "/show":
+            if not arg:
+                return _color("err", "/show N")
             task = hub.act("task_get", task_id=int(arg.lstrip("#")))
             return task + "\n" + hub.act("task_discussion", task_id=int(arg.lstrip("#")))
         if cmd == "/comment":
             num, _, text = arg.partition(" ")
             return hub.act("task_comment", task_id=int(num.lstrip("#")), text=text)
-        if cmd == "/goal" and arg:
+        if cmd == "/goal":
+            if not arg:
+                return _color("err", "/goal Title | description")
             title, desc = self._split(arg)
             return hub.act("set_goal", title=title, description=desc)
-        if cmd == "/task" and arg:
+        if cmd == "/task":
+            if not arg:
+                return _color("err", "/task Title | goal")
             title, goal = self._split(arg)
             return hub.act("task_create", title=title, goal=goal or title)
-        if cmd == "/msg" and arg:
+        if cmd == "/msg":
+            if not arg:
+                return _color("err", "/msg Name: text")
             name, text = self._parse_addressee(arg)
             if not name and ":" in arg:  # unknown to us: let the hub resolve it (and suggest names)
                 name, _, text = arg.partition(":")
@@ -528,7 +546,9 @@ class Console:
             if not name or not text:
                 return _color("err", "Unknown agent or empty text. /agents shows the team.")
             return hub.act("send_message", to=[name], text=text)
-        if cmd == "/all" and arg:
+        if cmd == "/all":
+            if not arg:
+                return _color("err", "/all text")
             return hub.act("send_message", to=["all"], text=arg)
         if cmd == "/chat":
             if not arg:
@@ -539,7 +559,9 @@ class Console:
                 return _color("err", "Unknown agent.")
             self.chat_with = name
             return f"Chatting with {name}. Plain text goes to them."
-        if cmd == "/hire" and arg:
+        if cmd == "/hire":
+            if not arg:
+                return _color("err", "/hire Role [| instructions]")
             role, instructions = self._split(arg)
             # instructions stay a required parameter of the tool: "" is fine for a catalog role
             return hub.act("hire_agent", role=role, instructions=instructions)
@@ -552,11 +574,27 @@ class Console:
             if word not in WRAP_UP_ON + WRAP_UP_OFF:
                 return _color("err", "/wrapup [off]")
             return hub.act("swarm_control", wrap_up=word in WRAP_UP_ON)
-        if cmd == "/budget" and arg:
-            return hub.act("swarm_control", max_cost_usd=float(arg.replace("$", "")))
-        if cmd == "/max" and arg:
-            return hub.act("swarm_control", max_agents=int(arg))
-        if cmd in ("/approve", "/reject") and arg:
+        if cmd == "/budget":
+            if not arg:
+                return _color("err", "/budget 10")
+            value = _parse_number(arg)
+            if value is None:
+                return _color("err", f"Not a number: {arg}")
+            return hub.act("swarm_control", max_cost_usd=value)
+        if cmd == "/max":
+            if not arg:
+                return _color("err", "/max 6")
+            value = _parse_number(arg)
+            if value is None or value != int(value):
+                return _color("err", f"Not a whole number: {arg}")
+            return hub.act("swarm_control", max_agents=int(value))
+        if cmd in ("/approve", "/reject"):
+            if not arg:
+                if cmd == "/approve":
+                    usage = "/approve name|N [comment]"
+                else:
+                    usage = "/reject N <what to fix>" if self.lang == "en" else "/reject N <что исправить>"
+                return _color("err", usage)
             head, _, rest = arg.strip().partition(" ")
             if re.fullmatch(r"#?\d+", head):  # a task in review (MCP server names start with a letter)
                 # the comment is free text, taken as typed ("don't", quotes and spacing kept), as in the TUI
@@ -575,7 +613,9 @@ class Console:
                 name, _ = self._parse_addressee(arg)
                 return hub.act("agent_traces", agent=name or arg)
             return hub.act("agent_traces")
-        if cmd == "/span" and arg:
+        if cmd == "/span":
+            if not arg:
+                return _color("err", "/span N [ctx]")
             num, _, rest = arg.partition(" ")
             if not num.lstrip("#").isdigit():
                 return _color("err", "/span N [ctx]")

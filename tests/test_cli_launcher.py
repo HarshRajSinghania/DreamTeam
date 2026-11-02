@@ -597,3 +597,40 @@ async def test_run_keeps_a_multi_line_goal_across_restarts(tmp_path, monkeypatch
     assert await run(goal) == first  # kept: same updated_at
     changed = await run("Tetris\nPython")
     assert changed["title"] == "Tetris" and changed["updated_at"] >= first["updated_at"]
+
+
+def test_console_missing_argument_shows_usage():
+    """Known commands without their required argument print usage, not 'Unknown command'."""
+    from dreamteam import console as console_module
+
+    class Hub:
+        def act(self, *a, **k):
+            return "acted"
+
+    con = console_module.Console("http://127.0.0.1:9", "en")
+    con.hub = Hub()
+
+    # Missing arg should show usage
+    assert "/show N" in con._dispatch("/show")
+    assert "/goal Title | description" in con._dispatch("/goal")
+    assert "/task Title | goal" in con._dispatch("/task")
+    assert "/msg Name: text" in con._dispatch("/msg")
+    assert "/all text" in con._dispatch("/all")
+    assert "/hire Role" in con._dispatch("/hire")
+    assert "/budget 10" in con._dispatch("/budget")
+    assert "/max 6" in con._dispatch("/max")
+    assert "/approve" in con._dispatch("/approve")
+    assert "/reject" in con._dispatch("/reject")
+    assert "/span N" in con._dispatch("/span")
+
+    # Still unknown for truly unknown
+    assert "Unknown command" in con._dispatch("/nosuch")
+
+    # Number parsing for budget/max
+    # (hub.act will be called only on valid)
+    assert con._dispatch("/budget 2,5") == "acted"
+    assert con._dispatch("/budget $2.50") == "acted"
+    assert "Not a number" in con._dispatch("/budget abc")
+    assert con._dispatch("/max 6") == "acted"
+    assert "Not a whole number" in con._dispatch("/max 2.5")
+
